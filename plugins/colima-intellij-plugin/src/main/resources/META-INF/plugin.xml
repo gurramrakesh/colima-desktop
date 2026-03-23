@@ -1,0 +1,98 @@
+<idea-plugin>
+    <id>com.colima.desktop.plugin</id>
+    <name>Colima Desktop</name>
+    <version>1.0.0</version>
+    <vendor email="support@colima.dev" url="https://github.com/abiosoft/colima">Colima</vendor>
+
+    <description><![CDATA[
+        <h2>Colima Desktop for IntelliJ IDEA</h2>
+        <p>
+            Manage your <b>Colima</b> container runtime directly inside IntelliJ IDEA.
+            Full-featured Docker/Colima management UI embedded as a native Tool Window.
+        </p>
+        <br/>
+        <b>Features:</b>
+        <ul>
+            <li>🐳 View and manage running containers with live CPU/memory stats</li>
+            <li>🖼️ Browse and run Docker images</li>
+            <li>💾 Manage volumes</li>
+            <li>⚙️ Configure Colima VM resources</li>
+            <li>💻 Built-in terminal for docker/colima CLI commands</li>
+            <li>📋 Live activity log panel</li>
+            <li>↔️ Resizable log panel with drag handle</li>
+        </ul>
+        <br/>
+        <b>Requirements:</b>
+        <ul>
+            <li>macOS (Apple Silicon or Intel)</li>
+            <li>Colima installed: <code>brew install colima</code></li>
+            <li>Docker CLI: <code>brew install docker</code></li>
+            <li>IntelliJ IDEA 2023.1+ (JCEF required)</li>
+        </ul>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <b>1.0.0</b>
+        <ul>
+            <li>Initial release</li>
+            <li>Embedded Colima Desktop UI via JCEF</li>
+            <li>Tool Window with persistent state</li>
+            <li>Status bar widget showing Colima VM status</li>
+            <li>Open/Focus action via Tools menu</li>
+        </ul>
+    ]]></change-notes>
+
+    <!-- IntelliJ Platform compatibility: 2023.1 to 2024.x -->
+    <idea-version since-build="231" until-build="243.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+
+        <!-- Main Tool Window -->
+        <toolWindow
+            id="Colima Desktop"
+            displayName="Colima Desktop"
+            anchor="right"
+            secondary="false"
+            icon="/icons/colima_tool_window.svg"
+            factoryClass="com.colima.desktop.plugin.ColimaToolWindowFactory"
+            canCloseContents="false"/>
+
+        <!-- Status Bar Widget -->
+        <statusBarWidgetFactory
+            id="ColimaStatusWidget"
+            implementation="com.colima.desktop.plugin.ColimaStatusBarWidgetFactory"
+            order="after positionWidget"/>
+
+        <!-- Application-level service for Colima state -->
+        <applicationService
+            serviceImplementation="com.colima.desktop.plugin.ColimaAppService"/>
+
+    </extensions>
+
+    <actions>
+        <!-- Tools menu action -->
+        <action
+            id="Colima.OpenDesktop"
+            class="com.colima.desktop.plugin.OpenColimaDesktopAction"
+            text="Colima Desktop"
+            description="Open Colima Desktop manager"
+            icon="/icons/colima_action.svg">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="ctrl shift D"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="ctrl shift D"/>
+        </action>
+
+        <!-- Right-click project tree action -->
+        <action
+            id="Colima.RunInContainer"
+            class="com.colima.desktop.plugin.RunInContainerAction"
+            text="Run in Colima Container"
+            description="Run selected project/file in a Colima Docker container"
+            icon="/icons/colima_action.svg">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+
+</idea-plugin>

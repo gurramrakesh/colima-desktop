@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Colima Desktop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0d0f12;
+    --bg-secondary: #13161b;
+    --bg-tertiary: #1a1e26;
+    --bg-card: #1e2330;
+    --border: #2a2f3d;
+    --border-light: #343b4f;
+    --accent-blue: #3b82f6;
+    --accent-blue-dim: rgba(59,130,246,0.15);
+    --accent-green: #22c55e;
+    --accent-green-dim: rgba(34,197,94,0.12);
+    --accent-red: #ef4444;
+    --accent-red-dim: rgba(239,68,68,0.12);
+    --accent-yellow: #f59e0b;
+    --accent-cyan: #06b6d4;
+    --text-primary: #e2e8f0;
+    --text-secondary: #8892a4;
+    --text-dim: #4a5568;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'DM Sans', sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:var(--font-sans); background:var(--bg-primary); color:var(--text-primary); height:100vh; display:flex; flex-direction:column; overflow:hidden; font-size:14px; }
+
+  /* TITLEBAR */
+  .titlebar { height:40px; background:var(--bg-secondary); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:12px; flex-shrink:0; user-select:none; }
+  .titlebar-dots { display:flex; gap:6px; }
+  .dot { width:12px; height:12px; border-radius:50%; cursor:pointer; transition:filter .2s; }
+  .dot:hover { filter:brightness(1.3); }
+  .dot-red { background:#ff5f57; } .dot-yellow { background:#febc2e; } .dot-green { background:#28c840; }
+  .titlebar-title { font-family:var(--font-mono); font-size:12px; font-weight:500; color:var(--text-secondary); margin:0 auto; letter-spacing:.05em; }
+  .titlebar-status { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; }
+  .status-dot { width:7px; height:7px; border-radius:50%; }
+  .status-dot.running { background:var(--accent-green); box-shadow:0 0 6px var(--accent-green); animation:pg 2s infinite; }
+  .status-dot.stopped { background:var(--text-dim); }
+  .status-dot.starting { background:var(--accent-yellow); animation:py 1s infinite; }
+  @keyframes pg { 0%,100%{opacity:1} 50%{opacity:.5} }
+  @keyframes py { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* LAYOUT */
+  .app-body { display:flex; flex:1; overflow:hidden; min-height:0; }
+
+  /* SIDEBAR */
+  .sidebar { width:220px; background:var(--bg-secondary); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; padding:12px 0; }
+  .sidebar-logo { display:flex; align-items:center; gap:10px; padding:8px 16px 16px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+  .logo-icon { width:32px; height:32px; background:linear-gradient(135deg,#3b82f6,#06b6d4); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .logo-text { font-weight:600; font-size:15px; color:var(--text-primary); }
+  .logo-sub { font-size:10px; font-family:var(--font-mono); color:var(--text-dim); }
+  .nav-group { margin-bottom:4px; }
+  .nav-group-label { font-size:10px; font-weight:500; font-family:var(--font-mono); color:var(--text-dim); padding:4px 16px; letter-spacing:.1em; text-transform:uppercase; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:8px 16px; cursor:pointer; color:var(--text-secondary); font-size:13px; transition:all .15s; border-left:2px solid transparent; }
+  .nav-item:hover { background:var(--bg-tertiary); color:var(--text-primary); }
+  .nav-item.active { background:var(--accent-blue-dim); color:var(--accent-blue); border-left-color:var(--accent-blue); }
+  .nav-item .nav-icon { font-size:15px; width:18px; text-align:center; }
+  .nav-badge { margin-left:auto; background:var(--bg-card); color:var(--text-secondary); font-family:var(--font-mono); font-size:10px; padding:1px 6px; border-radius:10px; border:1px solid var(--border); }
+  .nav-item.active .nav-badge { background:var(--accent-blue-dim); border-color:var(--accent-blue); color:var(--accent-blue); }
+  .sidebar-bottom { margin-top:auto; border-top:1px solid var(--border); padding-top:8px; }
+  .colima-status-pill { margin:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+  .csp-label { font-size:10px; font-family:var(--font-mono); color:var(--text-dim); margin-bottom:4px; }
+  .csp-row { display:flex; align-items:center; justify-content:space-between; }
+  .csp-name { font-size:12px; font-weight:500; color:var(--text-primary); }
+
+  /* MAIN */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+  .topbar { height:52px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:12px; background:var(--bg-secondary); flex-shrink:0; }
+  .topbar-title { font-weight:600; font-size:15px; }
+  .search-box { margin-left:auto; display:flex; align-items:center; gap:8px; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:var(--radius); padding:6px 12px; width:220px; transition:border-color .2s; }
+  .search-box:focus-within { border-color:var(--accent-blue); }
+  .search-box input { background:none; border:none; outline:none; color:var(--text-primary); font-family:var(--font-sans); font-size:13px; width:100%; }
+  .search-box input::placeholder { color:var(--text-dim); }
+  .btn { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:var(--radius); border:none; cursor:pointer; font-family:var(--font-sans); font-size:12px; font-weight:500; transition:all .15s; }
+  .btn-primary { background:var(--accent-blue); color:#fff; }
+  .btn-primary:hover { background:#2563eb; }
+  .btn-ghost { background:transparent; color:var(--text-secondary); border:1px solid var(--border); }
+  .btn-ghost:hover { background:var(--bg-tertiary); color:var(--text-primary); border-color:var(--border-light); }
+  .btn-danger { background:var(--accent-red-dim); color:var(--accent-red); border:1px solid transparent; }
+  .btn-danger:hover { border-color:var(--accent-red); }
+  .btn-sm { padding:4px 10px; font-size:11px; }
+
+  /* MAIN BODY */
+  .main-body { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+  .content { flex:1; overflow-y:auto; padding:20px; min-height:0; }
+  .content::-webkit-scrollbar { width:6px; }
+  .content::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ── RESIZABLE LOG PANEL ── */
+  .log-panel { background:#0a0c0f; border-top:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; min-height:28px; height:180px; overflow:hidden; }
+  .log-panel.collapsed { height:28px !important; }
+  .resize-handle { height:6px; background:transparent; cursor:ns-resize; flex-shrink:0; position:relative; z-index:10; }
+  .resize-handle::after { content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:36px; height:3px; background:var(--border); border-radius:3px; transition:background .2s; }
+  .resize-handle:hover::after, .resize-handle.active::after { background:var(--accent-blue); }
+  .log-header { height:28px; display:flex; align-items:center; padding:0 14px; gap:8px; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; cursor:pointer; user-select:none; }
+  .log-header:hover { background:var(--bg-tertiary); }
+  .log-title { font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); }
+  .log-toggle { margin-left:auto; font-size:10px; color:var(--text-dim); font-family:var(--font-mono); }
+  .log-clear { font-size:10px; color:var(--text-dim); cursor:pointer; padding:1px 6px; border:1px solid var(--border); border-radius:3px; background:none; font-family:var(--font-mono); }
+  .log-clear:hover { color:var(--accent-red); border-color:var(--accent-red); }
+  .log-body { flex:1; overflow-y:auto; padding:8px 14px; font-family:var(--font-mono); font-size:11.5px; line-height:1.7; }
+  .log-body::-webkit-scrollbar { width:4px; }
+  .log-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  .log-line { display:flex; gap:10px; }
+  .log-time { color:var(--text-dim); flex-shrink:0; }
+  .log-info { color:var(--accent-cyan); }
+  .log-warn { color:var(--accent-yellow); }
+  .log-err  { color:var(--accent-red); }
+  .log-ok   { color:var(--accent-green); }
+  .log-msg  { color:var(--text-secondary); }
+
+  /* STATS */
+  .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; transition:border-color .2s; }
+  .stat-card:hover { border-color:var(--border-light); }
+  .stat-label { font-size:11px; font-family:var(--font-mono); color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:.06em; }
+  .stat-value { font-size:24px; font-weight:600; font-family:var(--font-mono); line-height:1; }
+  .stat-sub { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+  .c-green { color:var(--accent-green); } .c-blue { color:var(--accent-blue); } .c-yellow { color:var(--accent-yellow); } .c-cyan { color:var(--accent-cyan); }
+
+  /* TABLE */
+  .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .section-title { font-size:13px; font-weight:600; font-family:var(--font-mono); color:var(--text-secondary); text-transform:uppercase; letter-spacing:.08em; }
+  .table-wrap { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { background:var(--bg-secondary); padding:10px 14px; text-align:left; font-size:11px; font-family:var(--font-mono); font-weight:500; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--border); }
+  tbody tr { border-bottom:1px solid var(--border); transition:background .1s; cursor:pointer; }
+  tbody tr:last-child { border-bottom:none; }
+  tbody tr:hover { background:var(--bg-tertiary); }
+  tbody tr.selected { background:var(--accent-blue-dim); }
+  td { padding:11px 14px; font-size:13px; vertical-align:middle; }
+  .sbadge { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:20px; font-size:11px; font-family:var(--font-mono); font-weight:500; }
+  .sb-run { background:var(--accent-green-dim); color:var(--accent-green); border:1px solid rgba(34,197,94,.3); }
+  .sb-stop { background:rgba(74,85,104,.2); color:var(--text-dim); border:1px solid var(--border); }
+  .sb-exit { background:var(--accent-red-dim); color:var(--accent-red); border:1px solid rgba(239,68,68,.2); }
+  .cname { font-family:var(--font-mono); font-size:13px; color:var(--text-primary); font-weight:500; }
+  .cimg  { font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); }
+  .pchip { display:inline-block; background:var(--accent-blue-dim); color:var(--accent-blue); border:1px solid rgba(59,130,246,.2); border-radius:4px; padding:1px 6px; font-family:var(--font-mono); font-size:10px; margin:1px; }
+  .arow { display:flex; gap:4px; }
+
+  /* IMAGES */
+  .images-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .image-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px; transition:border-color .2s; }
+  .image-card:hover { border-color:var(--border-light); }
+  .image-card-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .image-meta { display:flex; gap:16px; }
+  .image-meta-item { font-size:11px; color:var(--text-secondary); font-family:var(--font-mono); }
+  .image-meta-item span { color:var(--text-primary); }
+
+  /* VOLUMES */
+  .vol-list { display:flex; flex-direction:column; gap:8px; }
+  .vol-item { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; display:flex; align-items:center; gap:12px; }
+  .vol-item:hover { border-color:var(--border-light); }
+
+  /* VM SETTINGS */
+  .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .settings-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px; }
+  .settings-card h3 { font-size:12px; font-family:var(--font-mono); color:var(--text-secondary); text-transform:uppercase; letter-spacing:.06em; margin-bottom:14px; }
+  .setting-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .setting-label { font-size:13px; color:var(--text-primary); }
+  .setting-value { font-family:var(--font-mono); font-size:12px; color:var(--accent-cyan); }
+  .progress-bar  { height:4px; background:var(--border); border-radius:2px; margin-top:4px; }
+  .progress-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan)); }
+
+  /* VM CONTROL BAR */
+  .vm-ctrl { display:flex; align-items:center; gap:10px; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 16px; margin-bottom:20px; }
+  .vm-label { font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); }
+  .vm-val   { font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--text-primary); }
+  .sep { color:var(--border); font-size:18px; }
+  .ccmd { font-family:var(--font-mono); font-size:11px; background:var(--bg-secondary); border:1px solid var(--border); color:var(--accent-cyan); border-radius:4px; padding:3px 8px; }
+
+  /* VIEWS */
+  .view { display:none; }
+  .view.active { display:block; }
+
+  /* ── TERMINAL VIEW ── */
+  #view-terminal { flex-direction:column; }
+  #view-terminal.active { display:flex; height:100%; }
+
+  .term-tabbar { display:flex; align-items:stretch; background:var(--bg-secondary); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+  .term-tabbar::-webkit-scrollbar { height:3px; }
+  .term-tabbar::-webkit-scrollbar-thumb { background:var(--border); }
+  .term-tab { display:flex; align-items:center; gap:8px; padding:0 14px; height:36px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; border-right:1px solid var(--border); transition:all .15s; user-select:none; white-space:nowrap; flex-shrink:0; }
+  .term-tab:hover { color:var(--text-secondary); background:var(--bg-tertiary); }
+  .term-tab.active { color:var(--accent-green); border-bottom-color:var(--accent-green); background:var(--bg-primary); }
+  .term-tab-x { font-size:10px; opacity:0; padding:1px 3px; border-radius:3px; }
+  .term-tab:hover .term-tab-x { opacity:1; }
+  .term-tab-x:hover { background:var(--accent-red-dim); color:var(--accent-red); }
+  .term-add-tab { display:flex; align-items:center; justify-content:center; padding:0 12px; cursor:pointer; color:var(--text-dim); font-size:16px; flex-shrink:0; transition:all .15s; }
+  .term-add-tab:hover { color:var(--text-primary); background:var(--bg-tertiary); }
+
+  .term-panes { flex:1; position:relative; overflow:hidden; min-height:0; }
+  .term-pane { position:absolute; inset:0; display:none; flex-direction:column; background:#080b0e; }
+  .term-pane.active { display:flex; }
+
+  .term-output { flex:1; overflow-y:auto; padding:12px 16px 4px; font-family:var(--font-mono); font-size:12px; line-height:1.75; }
+  .term-output::-webkit-scrollbar { width:5px; }
+  .term-output::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  .tline { white-space:pre-wrap; word-break:break-all; }
+  .tline.prompt span.p { color:var(--accent-green); }
+  .tline.prompt span.c { color:var(--text-primary); }
+  .tline.out  { color:#7fa8c9; }
+  .tline.err  { color:var(--accent-red); }
+  .tline.sys  { color:var(--text-dim); }
+
+  .term-input-wrap { display:flex; align-items:center; padding:8px 16px; border-top:1px solid var(--border); background:#0a0c0f; flex-shrink:0; position:relative; gap:8px; }
+  .term-prompt-label { font-family:var(--font-mono); font-size:12px; color:var(--accent-green); flex-shrink:0; }
+  .term-input { flex:1; background:none; border:none; outline:none; font-family:var(--font-mono); font-size:12px; color:var(--text-primary); caret-color:var(--accent-green); }
+  .term-input::placeholder { color:var(--text-dim); }
+  .term-run { padding:4px 12px; font-size:11px; border-radius:4px; background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:var(--accent-green); cursor:pointer; font-family:var(--font-mono); transition:all .15s; flex-shrink:0; }
+  .term-run:hover { background:rgba(34,197,94,.2); }
+
+  /* AUTOCOMPLETE */
+  .ac-box { position:absolute; bottom:44px; left:120px; background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius); z-index:200; min-width:280px; max-height:200px; overflow-y:auto; box-shadow:0 -8px 24px rgba(0,0,0,.6); display:none; }
+  .ac-box.open { display:block; }
+  .ac-box::-webkit-scrollbar { width:4px; }
+  .ac-box::-webkit-scrollbar-thumb { background:var(--border); }
+  .ac-item { display:flex; align-items:center; gap:10px; padding:7px 12px; cursor:pointer; }
+  .ac-item:hover, .ac-item.hi { background:var(--accent-blue-dim); }
+  .ac-cmd  { font-family:var(--font-mono); font-size:11px; color:var(--text-primary); flex:1; }
+  .ac-desc { font-family:var(--font-mono); font-size:10px; color:var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="titlebar-dots">
+    <div class="dot dot-red"></div><div class="dot dot-yellow"></div><div class="dot dot-green"></div>
+  </div>
+  <div class="titlebar-title">Colima Desktop</div>
+  <div class="titlebar-status">
+    <div class="status-dot running" id="title-dot"></div>
+    <span style="font-size:11px;color:var(--text-secondary)" id="title-txt">colima running</span>
+  </div>
+</div>
+
+<div class="app-body">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🐋</div>
+      <div><div class="logo-text">Colima</div><div class="logo-sub">Lima VM · Docker</div></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Dashboard</div>
+      <div class="nav-item active" id="nav-containers" onclick="switchTab('containers',this)"><span class="nav-icon">📦</span>Containers<span class="nav-badge" id="badge-containers">4</span></div>
+      <div class="nav-item" id="nav-images"     onclick="switchTab('images',this)"><span class="nav-icon">🖼</span>Images<span class="nav-badge" id="badge-images">6</span></div>
+      <div class="nav-item" id="nav-volumes"    onclick="switchTab('volumes',this)"><span class="nav-icon">💾</span>Volumes<span class="nav-badge" id="badge-volumes">3</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">System</div>
+      <div class="nav-item" id="nav-vm"       onclick="switchTab('vm',this)"><span class="nav-icon">⚙️</span>VM Settings</div>
+      <div class="nav-item" id="nav-terminal" onclick="switchTab('terminal',this)"><span class="nav-icon">⬛</span>Terminal</div>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="colima-status-pill">
+        <div class="csp-label">COLIMA VM</div>
+        <div class="csp-row">
+          <div class="csp-name" id="vm-status-name">● Running</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="colimaStop()">■</button>
+            <button class="btn btn-primary btn-sm" onclick="colimaStart()">▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">Containers</span>
+      <div class="search-box" id="search-wrap">
+        <span style="color:var(--text-dim);font-size:13px">🔍</span>
+        <input type="text" placeholder="Search..." oninput="filterTable(this.value)" id="search-input">
+      </div>
+      <button class="btn btn-primary" id="run-btn" onclick="runDialog()">＋ Run</button>
+      <button class="btn btn-ghost"   id="ref-btn"  onclick="refreshAll()">⟳ Refresh</button>
+    </div>
+
+    <div class="main-body">
+      <div class="content" id="content-area">
+
+        <!-- CONTAINERS -->
+        <div class="view active" id="view-containers">
+          <div class="stats-row">
+            <div class="stat-card"><div class="stat-label">Running</div><div class="stat-value c-green" id="stat-running">2</div><div class="stat-sub">containers active</div></div>
+            <div class="stat-card"><div class="stat-label">Stopped</div><div class="stat-value c-yellow" id="stat-stopped">2</div><div class="stat-sub">containers idle</div></div>
+            <div class="stat-card"><div class="stat-label">Images</div><div class="stat-value c-blue" id="stat-images">6</div><div class="stat-sub">local images</div></div>
+            <div class="stat-card"><div class="stat-label">Volumes</div><div class="stat-value c-cyan" id="stat-volumes">3</div><div class="stat-sub">persistent volumes</div></div>
+          </div>
+          <div class="vm-ctrl">
+            <div><div class="vm-label">RUNTIME</div><div class="vm-val">colima</div></div>
+            <div class="sep">|</div>
+            <div><div class="vm-label">SOCKET</div><span class="ccmd">~/.colima/default/docker.sock</span></div>
+            <div class="sep">|</div>
+            <div><div class="vm-label">VM ENGINE</div><div class="vm-val" style="color:var(--accent-cyan)">lima · qemu</div></div>
+            <div style="margin-left:auto;display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('colima status')">colima status</button>
+              <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('colima list')">colima list</button>
+            </div>
+          </div>
+          <div class="section-header">
+            <div class="section-title">Containers</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost btn-sm" onclick="filterStatus('all')">All</button>
+              <button class="btn btn-ghost btn-sm" onclick="filterStatus('running')">Running</button>
+              <button class="btn btn-ghost btn-sm" onclick="filterStatus('stopped')">Stopped</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Name</th><th>Image</th><th>Status</th><th>Ports</th><th>CPU</th><th>Memory</th><th>Actions</th></tr></thead>
+            <tbody id="containers-tbody"></tbody></table>
+          </div>
+        </div>
+
+        <!-- IMAGES -->
+        <div class="view" id="view-images">
+          <div class="section-header">
+            <div class="section-title">Local Images</div>
+            <button class="btn btn-primary btn-sm" onclick="sendToTerminal('docker pull ')">⬇ Pull Image</button>
+          </div>
+          <div class="images-grid" id="images-grid"></div>
+        </div>
+
+        <!-- VOLUMES -->
+        <div class="view" id="view-volumes">
+          <div class="section-header">
+            <div class="section-title">Volumes</div>
+            <button class="btn btn-primary btn-sm" onclick="sendToTerminal('docker volume create ')">＋ Create</button>
+          </div>
+          <div class="vol-list" id="volumes-list"></div>
+        </div>
+
+        <!-- VM SETTINGS -->
+        <div class="view" id="view-vm">
+          <div class="section-header">
+            <div class="section-title">VM Configuration</div>
+            <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('colima edit')">✏ Edit Config</button>
+          </div>
+          <div class="settings-grid" id="settings-grid"></div>
+        </div>
+
+        <!-- TERMINAL -->
+        <div class="view" id="view-terminal">
+          <div class="term-tabbar" id="term-tabbar">
+            <div class="term-add-tab" onclick="addTab()" title="New terminal tab">＋</div>
+          </div>
+          <div class="term-panes" id="term-panes"></div>
+        </div>
+
+      </div><!-- /content -->
+
+      <!-- ── RESIZABLE LOG PANEL ── -->
+      <div class="log-panel" id="log-panel">
+        <div class="resize-handle" id="rhandle"></div>
+        <div class="log-header" id="log-hdr" onclick="toggleLog()">
+          <span style="font-size:10px;color:var(--accent-cyan)">▣</span>
+          <span class="log-title">Colima Log</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:6px">docker.sock · active</span>
+          <button class="log-clear" onclick="event.stopPropagation();clearLog()">clear</button>
+          <span class="log-toggle" id="log-toggle-icon">▼ collapse</span>
+        </div>
+        <div class="log-body" id="log-body"></div>
+      </div>
+    </div><!-- /main-body -->
+  </div><!-- /main -->
+</div><!-- /app-body -->
+
+<script>
+// ─── DATA ────────────────────────────────────────────────────────
+let containers = [
+  {id:'c1',name:'nginx-proxy', image:'nginx:alpine',   status:'running',ports:['80:80','443:443'],cpu:'0.3%',mem:'12 MB',uptime:'2 days'},
+  {id:'c2',name:'postgres-dev',image:'postgres:15',    status:'running',ports:['5432:5432'],      cpu:'1.2%',mem:'64 MB',uptime:'5 hours'},
+  {id:'c3',name:'redis-cache', image:'redis:7',        status:'stopped',ports:['6379:6379'],      cpu:'0.0%',mem:'0 MB', uptime:'—'},
+  {id:'c4',name:'node-app',    image:'node:20-alpine', status:'exited', ports:['3000:3000'],      cpu:'0.0%',mem:'0 MB', uptime:'—'},
+];
+const imgs = [
+  {name:'nginx',   tag:'alpine',    size:'23 MB',  created:'3 days ago', icon:'🌐'},
+  {name:'postgres',tag:'15',        size:'412 MB', created:'1 week ago', icon:'🐘'},
+  {name:'redis',   tag:'7',         size:'35 MB',  created:'1 week ago', icon:'⚡'},
+  {name:'node',    tag:'20-alpine', size:'178 MB', created:'2 days ago', icon:'🟢'},
+  {name:'ubuntu',  tag:'22.04',     size:'77 MB',  created:'2 weeks ago',icon:'🐧'},
+  {name:'python',  tag:'3.11-slim', size:'125 MB', created:'5 days ago', icon:'🐍'},
+];
+const vols = [
+  {name:'postgres_data',driver:'local',size:'1.2 GB',used:'postgres-dev'},
+  {name:'redis_data',   driver:'local',size:'42 MB', used:'redis-cache'},
+  {name:'app_uploads',  driver:'local',size:'512 MB',used:'node-app'},
+];
+const vmCfg = {
+  cpu:    {label:'CPU Cores',value:'4',       prog:50},
+  mem:    {label:'Memory',   value:'8 GB',    prog:62},
+  disk:   {label:'Disk',     value:'60 GB',   prog:38},
+  rt:     {label:'Runtime',  value:'docker',  prog:null},
+  arch:   {label:'Arch',     value:'x86_64',  prog:null},
+  kernel: {label:'Kernel',   value:'Lima 0.18',prog:null},
+};
+
+// ─── FAKE TERMINAL RESPONSES ─────────────────────────────────────
+const FAKE = {
+  'help':              `Available commands:\n  docker ps [-a]       list containers\n  docker images        list images\n  docker info          docker engine info\n  docker system df     disk usage\n  docker system prune  clean up\n  docker volume ls     list volumes\n  docker network ls    list networks\n  docker pull <img>    pull image\n  docker run -d <img>  run container\n  docker stop <name>   stop container\n  docker start <name>  start container\n  docker rm <name>     remove container\n  docker logs <name>   show logs\n  docker exec -it <n>  exec into container\n  colima status        VM status\n  colima list          list VMs\n  colima start/stop    control VM\n  clear                clear terminal\n  help                 this message`,
+  'docker ps':         `CONTAINER ID   IMAGE            COMMAND    CREATED      STATUS        PORTS          NAMES\na1b2c3d4e5f6   nginx:alpine     "nginx…"   2 days ago   Up 2 days     80,443/tcp     nginx-proxy\nb2c3d4e5f6a1   postgres:15      "docker…"  5 hours ago  Up 5 hours    5432/tcp       postgres-dev`,
+  'docker ps -a':      `CONTAINER ID   IMAGE            STATUS                    NAMES\na1b2c3d4e5f6   nginx:alpine     Up 2 days                 nginx-proxy\nb2c3d4e5f6a1   postgres:15      Up 5 hours                postgres-dev\nc3d4e5f6a1b2   redis:7          Exited (0) 1 day ago      redis-cache\nd4e5f6a1b2c3   node:20-alpine   Exited (1) 12 hours ago   node-app`,
+  'docker images':     `REPOSITORY   TAG          IMAGE ID       CREATED        SIZE\nnginx        alpine       abc123def456   3 days ago     23MB\npostgres     15           bcd234ef5678   1 week ago     412MB\nredis        7            cde345fa6789   1 week ago     35MB\nnode         20-alpine    dfe456ab7890   2 days ago     178MB\nubuntu       22.04        efa567bc8901   2 weeks ago    77MB\npython       3.11-slim    fab678cd9012   5 days ago     125MB`,
+  'docker info':       `Server Version: 24.0.5\nContext:        default\nOS/Arch:        linux/amd64\nKernelVersion:  6.1.57-0-virt\nTotal Memory:   7.77GiB\nCPUs:           4\nDocker Root Dir: /var/lib/docker`,
+  'docker system df':  `TYPE            TOTAL   ACTIVE   SIZE        RECLAIMABLE\nImages          6       3        850.2MB     420.1MB (49%)\nContainers      4       2        0B          0B\nLocal Volumes   3       3        1.753GB     0B`,
+  'docker system prune': `Total reclaimed space: 0B`,
+  'docker volume ls':  `DRIVER    VOLUME NAME\nlocal     postgres_data\nlocal     redis_data\nlocal     app_uploads`,
+  'docker network ls': `NETWORK ID     NAME      DRIVER    SCOPE\nabc123def456   bridge    bridge    local\nbcd234ef5678   host      host      local\ncde345fa6789   none      null      local`,
+  'colima status':     `colima is running\narch: x86_64\nruntime: docker\nmountType: sshfs\nssh config: true`,
+  'colima list':       `PROFILE    STATUS     ARCH      CPUS    MEMORY    DISK    RUNTIME\ndefault    Running    x86_64    4       8GiB      60GiB   docker`,
+  'colima start':      `INFO[0000] starting colima\nINFO[0003] provisioning\nINFO[0008] DONE`,
+  'colima stop':       `INFO[0000] stopping colima\nINFO[0003] DONE`,
+  'colima edit':       `# Opens ~/.colima/default/colima.yaml in $EDITOR\n# (simulated — no file editor in browser)`,
+};
+const AC_LIST = [
+  {c:'docker ps',           d:'List running containers'},
+  {c:'docker ps -a',        d:'List all containers'},
+  {c:'docker images',       d:'List local images'},
+  {c:'docker info',         d:'Docker engine info'},
+  {c:'docker system df',    d:'Disk usage'},
+  {c:'docker system prune', d:'Remove unused data'},
+  {c:'docker volume ls',    d:'List volumes'},
+  {c:'docker network ls',   d:'List networks'},
+  {c:'docker pull ',        d:'Pull an image'},
+  {c:'docker run -d ',      d:'Run container (detached)'},
+  {c:'docker stop ',        d:'Stop a container'},
+  {c:'docker start ',       d:'Start a container'},
+  {c:'docker rm ',          d:'Remove a container'},
+  {c:'docker rmi ',         d:'Remove an image'},
+  {c:'docker exec -it ',    d:'Exec into container'},
+  {c:'docker logs ',        d:'View container logs'},
+  {c:'colima status',       d:'VM status'},
+  {c:'colima list',         d:'List VMs'},
+  {c:'colima start',        d:'Start VM'},
+  {c:'colima stop',         d:'Stop VM'},
+  {c:'colima edit',         d:'Edit VM config'},
+  {c:'help',                d:'Show help'},
+  {c:'clear',               d:'Clear terminal'},
+];
+
+function fakeResp(cmd) {
+  if (FAKE[cmd]) return FAKE[cmd];
+  for (const k of Object.keys(FAKE)) { if (k.endsWith(' ') && cmd.startsWith(k)) return FAKE[k]; }
+  if (/^docker stop .+/.test(cmd))  return cmd.split(' ').pop()+'\n(simulated — container stopped)';
+  if (/^docker start .+/.test(cmd)) return cmd.split(' ').pop()+'\n(simulated — container started)';
+  if (/^docker rm .+/.test(cmd))    return cmd.split(' ').pop()+'\n(simulated — container removed)';
+  if (/^docker rmi .+/.test(cmd))   return cmd.split(' ').pop()+'\n(simulated — image removed)';
+  if (/^docker pull .+/.test(cmd))  return `Pulling ${cmd.split(' ').pop()}…\nStatus: Image up to date`;
+  if (/^docker run .+/.test(cmd))   return `a1b2c3d4e5f6\n(simulated — container started)`;
+  if (/^docker exec .+/.test(cmd))  return `(simulated — exec into container)\n/ # `;
+  if (/^docker logs .+/.test(cmd))  return `[log lines for ${cmd.split(' ').pop()}]`;
+  if (/^docker volume create .+/.test(cmd)) return cmd.split(' ').pop()+'\n(simulated — volume created)';
+  return `zsh: command not found: ${cmd.split(' ')[0]}\nType "help" for available commands.`;
+}
+
+// ─── LOG PANEL ───────────────────────────────────────────────────
+let logMsgs = [
+  {t:'10:32:01',l:'info',m:'colima started successfully'},
+  {t:'10:32:02',l:'ok',  m:'docker socket available at ~/.colima/default/docker.sock'},
+  {t:'10:32:05',l:'info',m:'container nginx-proxy started (nginx:alpine)'},
+  {t:'10:32:08',l:'info',m:'container postgres-dev started (postgres:15)'},
+  {t:'10:34:12',l:'warn',m:'container redis-cache stopped (exit 0)'},
+  {t:'10:41:55',l:'err', m:'container node-app exited with code 1'},
+];
+function addLog(l,m){
+  const n=new Date(); const t=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  logMsgs.push({t,l,m}); if(logMsgs.length>300)logMsgs.shift(); renderLogs();
+}
+function clearLog(){ logMsgs=[]; renderLogs(); }
+function renderLogs(){
+  const b=document.getElementById('log-body'); if(!b)return;
+  b.innerHTML=logMsgs.map(x=>`<div class="log-line"><span class="log-time">${x.t}</span><span class="log-${x.l==='ok'?'ok':x.l==='warn'?'warn':x.l==='err'?'err':'info'}">[${(x.l+'    ').slice(0,4).toUpperCase()}]</span><span class="log-msg"> ${esc(x.m)}</span></div>`).join('');
+  b.scrollTop=b.scrollHeight;
+}
+
+// ─── RESIZE LOG PANEL ────────────────────────────────────────────
+(()=>{
+  const panel=document.getElementById('log-panel');
+  const handle=document.getElementById('rhandle');
+  let drag=false,sy=0,sh=0,collapsed=false,savedH=180;
+  handle.addEventListener('mousedown',e=>{
+    if(collapsed)return; drag=true; sy=e.clientY; sh=panel.offsetHeight;
+    handle.classList.add('active'); document.body.style.cursor='ns-resize'; document.body.style.userSelect='none'; e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    const d=sy-e.clientY;
+    const newH=Math.max(28,Math.min(window.innerHeight*.8,sh+d));
+    panel.style.height=newH+'px';
+    if(newH>28) savedH=newH;
+  });
+  document.addEventListener('mouseup',()=>{ if(drag){drag=false;handle.classList.remove('active');document.body.style.cursor='';document.body.style.userSelect='';}});
+  document.getElementById('log-hdr').addEventListener('click',()=>{
+    collapsed=!collapsed;
+    if(collapsed){ savedH=panel.offsetHeight>28?panel.offsetHeight:savedH; panel.classList.add('collapsed'); document.getElementById('log-toggle-icon').textContent='▲ expand'; }
+    else { panel.classList.remove('collapsed'); panel.style.height=savedH+'px'; document.getElementById('log-toggle-icon').textContent='▼ collapse'; }
+  });
+})();
+
+// ─── TERMINAL TABS ───────────────────────────────────────────────
+let tabCtr=0; let activeTabId=null; const tabState={};
+
+function addTab(opts={}){
+  const id='t'+(++tabCtr);
+  const label=opts.label||'shell '+tabCtr;
+  tabState[id]={id,label,hist:[],hidx:-1};
+
+  // Tab button (insert before + button)
+  const addBtn=document.querySelector('.term-add-tab');
+  const tabEl=document.createElement('div');
+  tabEl.className='term-tab'; tabEl.id='ttab-'+id;
+  tabEl.innerHTML=`<span style="font-size:10px">⬛</span> <span>${esc(label)}</span> <span class="term-tab-x" onclick="event.stopPropagation();closeTab('${id}')">✕</span>`;
+  tabEl.onclick=()=>activateTab(id);
+  document.getElementById('term-tabbar').insertBefore(tabEl,addBtn);
+
+  // Pane
+  const pane=document.createElement('div');
+  pane.className='term-pane'; pane.id='tpane-'+id;
+
+  const out=document.createElement('div');
+  out.className='term-output'; out.id='tout-'+id;
+
+  const inpWrap=document.createElement('div');
+  inpWrap.className='term-input-wrap'; inpWrap.style.position='relative';
+
+  const ac=document.createElement('div');
+  ac.className='ac-box'; ac.id='tac-'+id;
+
+  const lbl=document.createElement('span');
+  lbl.className='term-prompt-label'; lbl.textContent='colima ❯';
+
+  const inp=document.createElement('input');
+  inp.type='text'; inp.className='term-input'; inp.id='tinp-'+id;
+  inp.placeholder='type a command… (Tab to autocomplete)'; inp.autocomplete='off'; inp.spellcheck=false;
+
+  const runBtn=document.createElement('button');
+  runBtn.className='term-run'; runBtn.textContent='run ↵';
+  runBtn.onclick=()=>execCmd(id);
+
+  inpWrap.appendChild(ac);
+  inpWrap.appendChild(lbl);
+  inpWrap.appendChild(inp);
+  inpWrap.appendChild(runBtn);
+  pane.appendChild(out);
+  pane.appendChild(inpWrap);
+  document.getElementById('term-panes').appendChild(pane);
+
+  inp.addEventListener('keydown', e=>handleKey(e,id));
+  inp.addEventListener('input',   ()=>showAC(id));
+
+  tprint(id,'sys','# Colima Desktop Terminal — docker -H unix://~/.colima/default/docker.sock');
+  tprint(id,'sys','# Type "help" for available commands\n');
+  activateTab(id);
+  if(opts.cmd){ inp.value=opts.cmd; }
+  return id;
+}
+
+function activateTab(id){
+  Object.keys(tabState).forEach(tid=>{
+    document.getElementById('tpane-'+tid)?.classList.remove('active');
+    document.getElementById('ttab-'+tid)?.classList.remove('active');
+  });
+  document.getElementById('tpane-'+id)?.classList.add('active');
+  document.getElementById('ttab-'+id)?.classList.add('active');
+  activeTabId=id;
+  setTimeout(()=>{ document.getElementById('tinp-'+id)?.focus(); },30);
+}
+
+function closeTab(id){
+  if(Object.keys(tabState).length<=1)return;
+  document.getElementById('tpane-'+id)?.remove();
+  document.getElementById('ttab-'+id)?.remove();
+  delete tabState[id];
+  const rem=Object.keys(tabState);
+  if(rem.length) activateTab(rem[rem.length-1]);
+}
+
+// ─── EXEC ────────────────────────────────────────────────────────
+function execCmd(id){
+  const inp=document.getElementById('tinp-'+id);
+  const cmd=inp.value.trim(); if(!cmd)return;
+  hideAC(id);
+  tabState[id].hist.unshift(cmd); tabState[id].hidx=-1; inp.value='';
+  tprint(id,'prompt',cmd);
+  addLog('info','$ '+cmd);
+  if(cmd==='clear'){document.getElementById('tout-'+id).innerHTML='';return;}
+  const resp=fakeResp(cmd);
+  setTimeout(()=>{ tprint(id,'out',resp); tprint(id,'sys',''); },80+Math.random()*150);
+}
+
+function tprint(id,type,text){
+  const out=document.getElementById('tout-'+id); if(!out)return;
+  const d=document.createElement('div');
+  d.className='tline '+type;
+  if(type==='prompt'){
+    d.innerHTML=`<span class="p">colima ❯ </span><span class="c">${esc(text)}</span>`;
+  } else {
+    d.textContent=text;
+  }
+  out.appendChild(d); out.scrollTop=out.scrollHeight;
+}
+
+function handleKey(e,id){
+  const inp=document.getElementById('tinp-'+id);
+  const ts=tabState[id];
+  if(e.key==='Enter'){execCmd(id);return;}
+  if(e.key==='Tab'){e.preventDefault();applyFirstAC(id);return;}
+  if(e.key==='Escape'){hideAC(id);return;}
+  if(e.key==='ArrowUp'){e.preventDefault();if(ts.hidx<ts.hist.length-1){ts.hidx++;inp.value=ts.hist[ts.hidx]||'';}hideAC(id);return;}
+  if(e.key==='ArrowDown'){e.preventDefault();if(ts.hidx>0){ts.hidx--;inp.value=ts.hist[ts.hidx]||'';}else{ts.hidx=-1;inp.value='';}hideAC(id);return;}
+}
+
+// ─── AUTOCOMPLETE ────────────────────────────────────────────────
+function showAC(id){
+  const inp=document.getElementById('tinp-'+id);
+  const ac=document.getElementById('tac-'+id);
+  const val=inp.value.toLowerCase(); if(!val){hideAC(id);return;}
+  const hits=AC_LIST.filter(s=>s.c.toLowerCase().startsWith(val)&&s.c.toLowerCase()!==val).slice(0,9);
+  if(!hits.length){hideAC(id);return;}
+  ac.innerHTML=hits.map((s,i)=>`<div class="ac-item" data-cmd="${esc(s.c)}" onmousedown="pickAC(event,'${id}','${s.c.replace(/'/g,"\\'")}')"><span class="ac-cmd">${esc(s.c)}</span><span class="ac-desc">${esc(s.d)}</span></div>`).join('');
+  ac.classList.add('open');
+}
+function hideAC(id){ document.getElementById('tac-'+id)?.classList.remove('open'); }
+function pickAC(e,id,cmd){ e.preventDefault(); document.getElementById('tinp-'+id).value=cmd; hideAC(id); document.getElementById('tinp-'+id).focus(); }
+function applyFirstAC(id){
+  const first=document.getElementById('tac-'+id)?.querySelector('.ac-item');
+  if(first){ document.getElementById('tinp-'+id).value=first.dataset.cmd; hideAC(id); }
+}
+
+// ─── SEND TO TERMINAL ────────────────────────────────────────────
+function sendToTerminal(cmd){
+  switchTab('terminal', document.getElementById('nav-terminal'));
+  setTimeout(()=>{
+    if(!activeTabId||!tabState[activeTabId]) addTab({cmd});
+    else { const inp=document.getElementById('tinp-'+activeTabId); if(inp){inp.value=cmd; inp.focus();} }
+  },60);
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────
+let filterMode='all';
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function sbadge(s){
+  const cls={running:'sb-run',stopped:'sb-stop',exited:'sb-exit'}[s]||'sb-stop';
+  const dot=s==='running'?`<span style="width:6px;height:6px;border-radius:50%;background:var(--accent-green);display:inline-block;box-shadow:0 0 5px var(--accent-green)"></span>`:'';
+  return `<span class="sbadge ${cls}">${dot}${s}</span>`;
+}
+
+function renderContainers(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const rows=containers.filter(c=>{
+    if(filterMode!=='all'&&c.status!==filterMode)return false;
+    if(q&&!c.name.includes(q)&&!c.image.includes(q))return false;
+    return true;
+  });
+  document.getElementById('containers-tbody').innerHTML=rows.map(c=>`
+    <tr onclick="selectRow(this)">
+      <td><div class="cname">${esc(c.name)}</div>${c.uptime!=='—'?`<div style="font-size:10px;color:var(--text-dim);font-family:var(--font-mono)">up ${c.uptime}</div>`:''}</td>
+      <td><div class="cimg">${esc(c.image)}</div></td>
+      <td>${sbadge(c.status)}</td>
+      <td>${c.ports.map(p=>`<span class="pchip">${p}</span>`).join('')}</td>
+      <td><span style="font-family:var(--font-mono);font-size:12px">${c.cpu}</span></td>
+      <td><span style="font-family:var(--font-mono);font-size:12px">${c.mem}</span></td>
+      <td><div class="arow">
+        ${c.status==='running'
+          ?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();cAction('${c.id}','stop')" title="Stop">⏹</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();sendToTerminal('docker exec -it ${c.name} sh')" title="Exec">⬛</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();sendToTerminal('docker logs ${c.name}')" title="Logs">📋</button>`
+          :`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();cAction('${c.id}','start')" title="Start">▶</button>`}
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();cAction('${c.id}','remove')" title="Remove">✕</button>
+      </div></td>
+    </tr>`).join('')||`<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--text-dim);font-family:var(--font-mono);font-size:12px">no containers match</td></tr>`;
+  const run=containers.filter(c=>c.status==='running').length;
+  document.getElementById('stat-running').textContent=run;
+  document.getElementById('stat-stopped').textContent=containers.length-run;
+  document.getElementById('badge-containers').textContent=containers.length;
+}
+
+function renderImages(){
+  document.getElementById('images-grid').innerHTML=imgs.map(i=>`
+    <div class="image-card">
+      <div class="image-card-top">
+        <div style="font-size:22px">${i.icon}</div>
+        <div><div style="font-family:var(--font-mono);font-size:13px;font-weight:500">${i.name}</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary)">:${i.tag}</div></div>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('docker pull ${i.name}:${i.tag}')">⬇</button>
+          <button class="btn btn-primary btn-sm" onclick="runFromImage('${i.name}:${i.tag}')">▶ Run</button>
+        </div>
+      </div>
+      <div class="image-meta">
+        <div class="image-meta-item">Size <span>${i.size}</span></div>
+        <div class="image-meta-item">Created <span>${i.created}</span></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderVolumes(){
+  document.getElementById('volumes-list').innerHTML=vols.map(v=>`
+    <div class="vol-item">
+      <div style="font-size:18px">💾</div>
+      <div><div style="font-family:var(--font-mono);font-size:13px;font-weight:500">${v.name}</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">${v.driver} · ${v.size}</div></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim)">→ <span style="color:var(--text-secondary)">${v.used}</span></div>
+        <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('docker volume inspect ${v.name}')">inspect</button>
+        <button class="btn btn-danger btn-sm" onclick="sendToTerminal('docker volume rm ${v.name}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderVM(){
+  document.getElementById('settings-grid').innerHTML=`
+    <div class="settings-card">
+      <h3>Resources</h3>
+      ${['cpu','mem','disk'].map(k=>{const s=vmCfg[k];return`<div style="margin-bottom:12px"><div class="setting-row"><span class="setting-label">${s.label}</span><span class="setting-value">${s.value}</span></div>${s.prog!=null?`<div class="progress-bar"><div class="progress-fill" style="width:${s.prog}%"></div></div>`:''}</div>`;}).join('')}
+    </div>
+    <div class="settings-card">
+      <h3>Environment</h3>
+      ${['rt','arch','kernel'].map(k=>{const s=vmCfg[k];return`<div class="setting-row" style="margin-bottom:14px"><span class="setting-label">${s.label}</span><span class="setting-value">${s.value}</span></div>`;}).join('')}
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="colimaStop()">⏹ Stop VM</button>
+        <button class="btn btn-primary btn-sm" onclick="colimaStart()">▶ Start VM</button>
+        <button class="btn btn-ghost btn-sm" onclick="sendToTerminal('colima edit')">✏ Edit</button>
+      </div>
+    </div>
+    <div class="settings-card" style="grid-column:1/-1">
+      <h3>Quick Commands → Terminal</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${['colima status','colima list','docker info','docker system df','docker system prune','docker volume ls','docker network ls','docker ps -a'].map(c=>`<button class="btn btn-ghost btn-sm" onclick="sendToTerminal('${c}')">${c}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────
+function cAction(id,action){
+  const c=containers.find(x=>x.id===id); if(!c)return;
+  if(action==='stop')  {c.status='stopped';c.cpu='0.0%';c.mem='0 MB';c.uptime='—';addLog('warn',`container ${c.name} stopped`);}
+  if(action==='start') {c.status='running';c.cpu='0.2%';c.mem='16 MB';c.uptime='just now';addLog('ok',`container ${c.name} started`);}
+  if(action==='remove'){containers=containers.filter(x=>x.id!==id);addLog('warn',`container ${c.name} removed`);}
+  renderContainers();
+}
+function colimaStart(){
+  addLog('info','colima starting VM…');
+  document.getElementById('vm-status-name').textContent='◌ Starting…';
+  document.getElementById('title-dot').className='status-dot starting';
+  setTimeout(()=>{
+    document.getElementById('vm-status-name').textContent='● Running';
+    document.getElementById('title-dot').className='status-dot running';
+    document.getElementById('title-txt').textContent='colima running';
+    addLog('ok','colima VM started successfully');
+  },2000);
+}
+function colimaStop(){
+  addLog('warn','colima stopping VM…');
+  document.getElementById('vm-status-name').textContent='○ Stopped';
+  document.getElementById('title-dot').className='status-dot stopped';
+  document.getElementById('title-txt').textContent='colima stopped';
+  containers.forEach(c=>{c.status='stopped';c.cpu='0.0%';c.mem='0 MB';});
+  renderContainers(); addLog('info','all containers stopped with VM');
+}
+function runFromImage(image){
+  const name=image.split(':')[0].replace(/\//,'_')+'-'+(100+Math.random()*900|0);
+  containers.unshift({id:'c'+Date.now(),name,image,status:'running',ports:[],cpu:'0.1%',mem:'8 MB',uptime:'just now'});
+  addLog('ok',`container ${name} started`);
+  switchTab('containers',document.getElementById('nav-containers'));
+  renderContainers();
+}
+function runDialog(){ const img=prompt('Image to run (e.g. nginx:alpine):','nginx:alpine'); if(img)runFromImage(img); }
+function refreshAll(){ addLog('info','refreshing…'); renderContainers(); addLog('ok','refresh complete'); }
+function filterTable(){ renderContainers(); }
+function filterStatus(s){ filterMode=s; renderContainers(); }
+function selectRow(tr){ document.querySelectorAll('#containers-tbody tr').forEach(r=>r.classList.remove('selected')); tr.classList.add('selected'); }
+
+// ─── NAVIGATION ──────────────────────────────────────────────────
+let currentTab='containers';
+function switchTab(tab,el){
+  currentTab=tab;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const titles={containers:'Containers',images:'Images',volumes:'Volumes',vm:'VM Settings',terminal:'Terminal'};
+  document.getElementById('topbar-title').textContent=titles[tab]||tab;
+  const isTerm=tab==='terminal';
+  document.getElementById('search-wrap').style.display=['containers','images'].includes(tab)?'':'none';
+  document.getElementById('run-btn').style.display=isTerm?'none':'';
+  document.getElementById('ref-btn').style.display=isTerm?'none':'';
+  const ca=document.getElementById('content-area');
+  ca.style.padding=isTerm?'0':'20px';
+  ca.style.overflow=isTerm?'hidden':'auto';
+  if(isTerm){ if(!Object.keys(tabState).length)addTab(); else activateTab(activeTabId||Object.keys(tabState)[0]); }
+  if(tab==='images') renderImages();
+  if(tab==='volumes')renderVolumes();
+  if(tab==='vm')     renderVM();
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+renderContainers();
+renderLogs();
+document.getElementById('stat-images').textContent=imgs.length;
+document.getElementById('stat-volumes').textContent=vols.length;
+document.getElementById('badge-images').textContent=imgs.length;
+document.getElementById('badge-volumes').textContent=vols.length;
+
+// Live CPU/mem ticker
+setInterval(()=>{
+  containers.filter(c=>c.status==='running').forEach(c=>{
+    c.cpu=(Math.random()*3).toFixed(1)+'%';
+    c.mem=Math.floor(Math.random()*80+8)+' MB';
+  });
+  if(currentTab==='containers')renderContainers();
+},3000);
+</script>
+</body>
+</html>

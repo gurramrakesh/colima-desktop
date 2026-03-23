@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- Colima/Docker whale icon (simplified) -->
+  <rect x="1" y="9" width="14" height="3" rx="1.5" fill="#00d4ff" opacity="0.9"/>
+  <rect x="2" y="5" width="3" height="4" rx="0.5" fill="#00d4ff"/>
+  <rect x="6" y="3" width="3" height="6" rx="0.5" fill="#00d4ff"/>
+  <rect x="10" y="6" width="3" height="3" rx="0.5" fill="#00d4ff"/>
+  <!-- Water ripple -->
+  <ellipse cx="8" cy="13" rx="6" ry="1.5" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.5"/>
+</svg>
